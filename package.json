@@ -16,7 +16,7 @@
     "devvit": "^0.11.17",
     "@devvit/web-view-scripts": "^0.11.17",
     "@devvit/protos": "^0.11.17",
-    "protobufjs": "^7.5.3",
+    "protobufjs": "^7.5.3"
     
   },
   "devDependencies": {
@@ -24,7 +24,7 @@
     "@devvit/server": "^0.11.17", 
     "@typescript-eslint/eslint-plugin": "^8.29.1",
     "@typescript-eslint/parser": "^8.29.1",
-    "@types/node: "^24.0.8",
+    "@types/node": "^24.0.8",
     "eslint": "^9.24.0",
     "eslint-plugin-vitest": "^0.5.4",
     "typescript": "^5.8.2",
