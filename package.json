@@ -1,11 +1,11 @@
 {
   "private": true,
-  "name": "devvit-template",
+  "name": "devvit-ingest-reddit",
   "version": "0.0.0",
   "license": "BSD-3-Clause",
   "type": "module",
   "config": {
-    "testSubreddit": "pitchforkassistant"
+    "testSubreddit": "RPANclipped"
   },
   "scripts": {
     "test": "npm run test:unit",
@@ -13,14 +13,20 @@
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
-    "@devvit/protos": "0.11.12",
-    "@devvit/public-api": "0.11.12",
-    "@devvit/shared-types": "0.11.12",
-    "devvit-helpers": "0.7.4"
+    "devvit": "^0.11.17",
+    "@devvit/web-view-scripts": "^0.11.17",
+    "@devvit/protos": "^0.11.17",
+    "protobufjs": "^7.5.3",
+    
+    
+    "
   },
   "devDependencies": {
+    "@devvit/public-api": "^0.11.17",
+    "@devvit/server": "^0.11.17", 
     "@typescript-eslint/eslint-plugin": "^8.29.1",
     "@typescript-eslint/parser": "^8.29.1",
+    "@types/node: "^24.0.8",
     "eslint": "^9.24.0",
     "eslint-plugin-vitest": "^0.5.4",
     "typescript": "^5.8.2",
