@@ -18,8 +18,6 @@
     "@devvit/protos": "^0.11.17",
     "protobufjs": "^7.5.3",
     
-    
-    "
   },
   "devDependencies": {
     "@devvit/public-api": "^0.11.17",
