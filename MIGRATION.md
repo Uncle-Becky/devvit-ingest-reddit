@@ -1,108 +1,81 @@
-# Devvit Migration Notes
+# Devvit 0.11 → 0.13 Migration Notes
 
-Reference notes for upgrading this app off the legacy Blocks/Mod Tools stack onto
-**Devvit Web**. Captured so iteration can resume without re-researching.
+This app was migrated from **Devvit 0.11 (Blocks + Mod Tools)** to **Devvit Web
+0.13**. This document records what changed and, importantly, why the migration
+was a rewrite rather than a config bump.
 
-_Last researched: 2026-06-30._
+_Last updated: 2026-06-30._
 
-## Version status
+## The key finding: 0.13 removed the Blocks custom-post API
 
-| | Version |
-|---|---|
-| This repo (`package.json`) | `^0.11.17` |
-| Latest published `latest` tag | **`0.13.6`** (published 2026-06-29) |
-| Latest `0.11-latest` tag | `0.11.19` |
-| Latest `next` tag | `0.13.7-next-*` |
+The original app rendered its interactive post with the Blocks API
+(`Devvit.addCustomPostType` + `<vstack>/<button>` JSX + `useState`/`useInterval`).
+Verified directly against the installed `@devvit/public-api@0.13.6`:
 
-Verify the current latest at any time with:
+| Legacy API | 0.13 status |
+| --- | --- |
+| `addMenuItem`, `addTrigger`, `addSchedulerJob`, `addSettings`, `createForm` | ✅ kept |
+| `addCustomPostType`, `useState`, `useInterval`, `useChannel`, JSX intrinsics | ❌ **removed** |
+
+So the "singleton / `blocks.entry`" path keeps *non-rendering* mod-tools APIs
+working, but **any app with an interactive custom post must rewrite that post as
+a Devvit Web client** (HTML/React served via `post.entrypoints`, backed by a
+server). There is no in-place upgrade for Blocks UI.
+
+## What changed
+
+Mirrors the official [`reddit/devvit-template-react`](https://github.com/reddit/devvit-template-react)
+structure (React + Hono + Vite + Tailwind):
+
+- **Removed** the entire Blocks app: `addCustomPostType` post, the 20 trigger
+  stubs, menu buttons, settings/validators, scheduler job, and the
+  `devvit-helpers` dependency (along with template demo filler like the dice
+  validator and the eight identical showcase buttons).
+- **Added** a Devvit Web app:
+  - `src/client/` — React views (`splash`, `post`) + Tailwind. The post keeps the
+    original's in-post routing idea as Counter / About tabs.
+  - `src/server/` — Hono server on `@devvit/web/server` with `/api` (Redis
+    counter, current user) and `/internal` endpoints for menu, triggers, scheduler.
+  - `src/shared/api.ts` — shared request/response types.
+- **Config**: `devvit.yaml` → `devvit.json` (`post.entrypoints`, `server`, `menu`,
+  `triggers`, `scheduler`). Build via `vite` + `@devvit/start`; types via
+  `tsc --build` project references (`tools/tsconfig.*.json`).
+- **Dependencies**: dropped `@devvit/public-api`, `@devvit/protos`,
+  `@devvit/server`, `@devvit/web-view-scripts`, `devvit-helpers`. Added
+  `@devvit/web`, `@devvit/start`, `hono`, `@hono/node-server`, `react`,
+  `react-dom`, `vite`, `tailwindcss`, and the matching toolchain.
+
+## Feature mapping (old → new)
+
+| Old (Blocks) | New (Devvit Web) |
+| --- | --- |
+| `addCustomPostType` counter UI | `src/client/post.tsx` + `useCounter` + `/api/*` |
+| Redis counter via `useInterval` | `redis.incrBy` in `src/server/routes/api.ts` |
+| `customPostButton` menu → form → `submitPost` | `/internal/menu/post-create` → `reddit.submitCustomPost` |
+| `appInstall`/`appUpgrade` triggers | `/internal/triggers/on-app-install`, `on-app-upgrade` |
+| `someRecurringTask` scheduler job | `scheduler.tasks.heartbeat` → `/internal/scheduler/heartbeat` |
+| 20 console-logging trigger stubs | dropped (add per-event endpoints as needed) |
+| `addSettings` (dice/toggle/selects) | dropped (template demo filler) |
+
+## Verification
+
+Run fully offline (no Reddit auth required):
 
 ```bash
-npm view devvit dist-tags
+npm run type-check   # tsc --build — green
+npm run build        # vite build → dist/client + dist/server — green
+npm run lint         # eslint — green
+npm test             # vitest — green
 ```
 
-The `0.11.x` → `0.13.x` jump is **not a routine dependency bump** — it crosses the
-move from the old Blocks runtime to the **Devvit Web** architecture. Treat it as a
-migration, not an `npm update`.
+**Not yet verified on-platform.** Runtime behavior (the post rendering on
+Reddit, menu/trigger/scheduler wiring, Redis) requires `devvit playtest`, which
+needs `devvit login` and a test subreddit — out of scope for this environment.
 
-## What this app actually uses (drives which guide applies)
+## Follow-ups
 
-This is a classic **Blocks + Mod Tools** app. It does **not** use `useWebView` or any
-web view. Concretely, in `src/`:
-
-- `Devvit.addCustomPostType()` rendering `<blocks>` JSX — `src/customPost/index.tsx`
-- `Devvit.configure({...})` — `src/main.ts`
-- Triggers (`src/triggers/*`), buttons/menu items (`src/buttons/*`), forms
-  (`src/forms/*`), a scheduler job (`src/scheduler/*`), and app settings (`src/settings.ts`)
-- `devvit.yaml` (legacy project config)
-
-Because there is no web view, the relevant guide is **"Migrating Blocks/Mod Tools to
-Devvit Web"** (a.k.a. the "singleton" guide) — the quickest path. The `useWebView`
-guide does **not** apply here.
-
-## Relevant migration guides (official docs)
-
-Docs live in the `reddit/devvit-docs` repo. The unversioned (`docs/`) copy and the
-`versioned_docs/version-0.13/` copy are kept in sync.
-
-- **Migrating Blocks/Mod Tools to Devvit Web** ← primary path for this repo
-  `docs/guides/migrate/devvit-singleton.md`
-- Migrating from useWebView to Devvit Web (not needed here)
-  `docs/guides/migrate/inline-web-view.md`
-- Migrating from Devvit Web Experimental to Devvit Web (only if already on experimental)
-  `docs/guides/migrate/devvit-web-experimental.md`
-- Launch screen / entry points (replaces deprecated `submitCustomPost({ preview })` / `splash`)
-  `docs/capabilities/server/launch_screen_and_entry_points/splash_migration.mdx`
-- Migration FAQ
-  `docs/guides/faq.mdx`
-
-Browse on GitHub: <https://github.com/reddit/devvit-docs/tree/main/docs/guides/migrate>
-
-## Migration path for this repo (summary)
-
-The Blocks singleton path is intentionally low-effort — existing Blocks and Mod Tools
-code is meant to keep working; the main change is project config.
-
-1. **Replace `devvit.yaml` with `devvit.json`** at the repo root. Minimal shape for a
-   Blocks app:
-
-   ```json
-   {
-     "$schema": "https://developers.reddit.com/schema/v1/config.json",
-     "name": "your-app-name",
-     "blocks": { "entry": "src/main.ts" },
-     "media": { "dir": "assets/" }
-   }
-   ```
-
-   - Always include `$schema` for IDE autocompletion/validation (per the official
-     config reference).
-   - Set `name` to the real app slug.
-   - Point `blocks.entry` at the Blocks entry (`src/main.ts` here). Per the official
-     config reference, `blocks.entry` is the key that keeps the legacy
-     `@devvit/public-api` Blocks app working — it is **not** a top-level `main` key
-     (`main` is the server entry, which this app doesn't have).
-   - Keep the `media.dir` block only because this repo has an `assets/` folder.
-   - Delete `devvit.yaml` after the JSON is in place.
-
-2. **Bump dependencies** to the `0.13.x` line — `devvit`, `@devvit/public-api`,
-   `@devvit/protos`, `@devvit/server` — then reinstall and regenerate
-   `package-lock.json`. **Drop `@devvit/web-view-scripts`**: it is currently listed in
-   `package.json` but never imported anywhere in `src/`, and this app has no web view,
-   so remove it rather than bumping it.
-
-3. **Run `devvit playtest`** to confirm the app still loads and behaves locally.
-
-4. **Watch for deprecated APIs** (only act on these if/when you modernize beyond the
-   singleton shim):
-   - `Devvit.addCustomPostType()` → move post rendering to a `client` entry in
-     `devvit.json` backed by a real HTML/React web app.
-   - `submitCustomPost({ preview })` and the `splash` param → define inline/expanded
-     views via `post.entrypoints` in `devvit.json` (see the launch-screen guide).
-
-## Open questions before iterating
-
-- Confirm the real published app `name`/slug to put in `devvit.json` (current
-  `devvit.yaml` says `devvit-template`, which is a placeholder).
-- Decide the target: minimal **singleton shim** (fastest, keep Blocks) vs. a fuller
-  rewrite of the custom post to a Devvit Web `client` entry. The singleton path is the
-  recommended starting point.
+- Confirm the published app slug for `devvit.json` `name` (currently
+  `devvit-template`, inherited from the old `devvit.yaml`). Changing it creates a
+  new app rather than updating the existing one.
+- Run `devvit playtest` to validate on-platform, then re-add any of the dropped
+  triggers/settings that are actually needed as server endpoints.
