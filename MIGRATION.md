@@ -67,20 +67,28 @@ code is meant to keep working; the main change is project config.
 
    ```json
    {
+     "$schema": "https://developers.reddit.com/schema/v1/config.json",
      "name": "your-app-name",
      "blocks": { "entry": "src/main.ts" },
      "media": { "dir": "assets/" }
    }
    ```
 
+   - Always include `$schema` for IDE autocompletion/validation (per the official
+     config reference).
    - Set `name` to the real app slug.
-   - Point `blocks.entry` at the Blocks entry (`src/main.ts` here).
+   - Point `blocks.entry` at the Blocks entry (`src/main.ts` here). Per the official
+     config reference, `blocks.entry` is the key that keeps the legacy
+     `@devvit/public-api` Blocks app working — it is **not** a top-level `main` key
+     (`main` is the server entry, which this app doesn't have).
    - Keep the `media.dir` block only because this repo has an `assets/` folder.
    - Delete `devvit.yaml` after the JSON is in place.
 
 2. **Bump dependencies** to the `0.13.x` line — `devvit`, `@devvit/public-api`,
-   `@devvit/protos`, `@devvit/server`, `@devvit/web-view-scripts` — then reinstall and
-   regenerate `package-lock.json`.
+   `@devvit/protos`, `@devvit/server` — then reinstall and regenerate
+   `package-lock.json`. **Drop `@devvit/web-view-scripts`**: it is currently listed in
+   `package.json` but never imported anywhere in `src/`, and this app has no web view,
+   so remove it rather than bumping it.
 
 3. **Run `devvit playtest`** to confirm the app still loads and behaves locally.
 
